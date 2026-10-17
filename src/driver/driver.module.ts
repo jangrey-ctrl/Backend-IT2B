@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { CategoryService } from './category.service';
-import { CategoryController } from './category.controller';
+import { DriverService } from './driver.service';
+import { DriverController } from './driver.controller';
 import { DatabaseModule } from '../database/database.module';
 
 @Module({
@@ -9,8 +9,8 @@ import { DatabaseModule } from '../database/database.module';
     DatabaseModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  controllers: [CategoryController],
-  providers: [CategoryService],
-  exports: [CategoryService],
+  controllers: [DriverController],
+  providers: [DriverService],
+  exports: [DriverService],
 })
-export class CategoryModule {}
+export class DriverModule {}
