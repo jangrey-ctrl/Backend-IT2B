@@ -1,3 +1,4 @@
+
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { RowDataPacket, OkPacket } from 'mysql2';
@@ -34,7 +35,7 @@ export class BusService {
 
   async findByBusCode(bus_code: string) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
-      'SELECT bus_id, bus_code, bus_number, bus_type, bus_capacity, role, refresh_token FROM bus WHERE bus_code = ?',
+      'SELECT bus_id, bus_code, bus_number, bus_type, bus_capacity, role FROM bus WHERE bus_code = ?',
       [bus_code],
     );
 
@@ -43,7 +44,7 @@ export class BusService {
 
   async findById(id: number) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
-      'SELECT bus_id, bus_code, bus_number, bus_type, bus_capacity, role, refresh_token FROM bus WHERE bus_id = ?',
+      'SELECT bus_id, bus_code, bus_number, bus_type, bus_capacity, role, created_at FROM bus WHERE bus_id = ?',
       [id],
     );
 
@@ -71,17 +72,17 @@ export class BusService {
     const fields: string[] = [];
     const values: any[] = [];
 
-    if (partial.bus_code) {
+    if (partial.bus_code !== undefined) {
       fields.push('bus_code = ?');
       values.push(partial.bus_code);
     }
 
-    if (partial.bus_number) {
+    if (partial.bus_number !== undefined) {
       fields.push('bus_number = ?');
       values.push(partial.bus_number);
     }
 
-    if (partial.bus_type) {
+    if (partial.bus_type !== undefined) {
       fields.push('bus_type = ?');
       values.push(partial.bus_type);
     }
@@ -91,12 +92,14 @@ export class BusService {
       values.push(partial.bus_capacity);
     }
 
-    if (partial.role) {
+    if (partial.role !== undefined) {
       fields.push('role = ?');
       values.push(partial.role);
     }
 
-    if (fields.length === 0) return await this.findById(id);
+    if (fields.length === 0) {
+      return this.findById(id);
+    }
 
     values.push(id);
 
@@ -108,26 +111,11 @@ export class BusService {
   }
 
   async deleteBus(id: number) {
-  await this.pool().execute<OkPacket>(
-    'DELETE FROM bus WHERE bus_id = ?',
-    [id],
-  );
-
-  return true;
-}
-  async setRefreshToken(id: number, refreshToken: string | null) {
-    await this.pool().execute(
-      'UPDATE bus SET refresh_token = ? WHERE bus_id = ?',
-      [refreshToken, id],
-    );
-  }
-
-  async findByRefreshToken(refreshToken: string) {
-    const [rows] = await this.pool().execute<RowDataPacket[]>(
-      'SELECT bus_id, bus_code, role FROM bus WHERE refresh_token = ?',
-      [refreshToken],
+    await this.pool().execute<OkPacket>(
+      'DELETE FROM bus WHERE bus_id = ?',
+      [id],
     );
 
-    return rows[0];
+    return true;
   }
 }

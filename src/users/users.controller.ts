@@ -1,42 +1,66 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+
+import {
+  Controller,
+  Get,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  ForbiddenException,
+} from '@nestjs/common';
+
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  // Get all users (protected)
-  @UseGuards(JwtAuthGuard)
+  // ADMIN ROLE CHECK
+  private checkAdmin(request: any) {
+    if (request.user?.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+  }
+
+  // GET ALL USERS - ADMIN ONLY
   @Get()
-  async getAll() {
+  async getAll(@Request() request: any) {
+    this.checkAdmin(request);
     return this.usersService.getAll();
   }
 
-  // Get single user by id (protected)
-  @UseGuards(JwtAuthGuard)
+  // GET SINGLE USER - ADMIN ONLY
   @Get(':id')
-  async getOne(@Param('id') id: string) {
+  async getOne(
+    @Param('id') id: string,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.usersService.findById(+id);
   }
 
-  // Create user (open - for demo)
-  @Post()
-  async create(@Body() body: { username: string; password: string }) {
-    return this.usersService.createUser(body.username, body.password);
-  }
-
-  // Update user (protected)
-  @UseGuards(JwtAuthGuard)
+  // UPDATE USER - ADMIN ONLY
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.usersService.updateUser(+id, body);
   }
 
-  // Delete user (protected)
-  @UseGuards(JwtAuthGuard)
+  // DELETE USER - ADMIN ONLY
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(
+    @Param('id') id: string,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.usersService.deleteUser(+id);
   }
 }

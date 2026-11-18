@@ -1,3 +1,4 @@
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { RowDataPacket, OkPacket } from 'mysql2';
@@ -11,39 +12,56 @@ export class UsersService {
     return this.db.getPool();
   }
 
-  async createUser(username: string, password: string, role = 'user') {
+  // CREATE USER - Public registration always creates a passenger/user
+  async createUser(username: string, password: string) {
     const hashed = await bcrypt.hash(password, 10);
+
     const [result] = await this.pool().execute<OkPacket>(
-      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-      [username, hashed, role],
+      "INSERT INTO users (username, password, role) VALUES (?, ?, 'user')",
+      [username, hashed],
     );
-    return { id: result.insertId, username, role };
+
+    return {
+      id: result.insertId,
+      username,
+      role: 'user',
+    };
   }
 
+  // FIND USER BY USERNAME
   async findByUsername(username: string) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
       'SELECT id, username, password, role, refresh_token FROM users WHERE username = ?',
       [username],
     );
+
     return rows[0];
   }
 
+  // FIND USER BY ID
   async findById(id: number) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
       'SELECT id, username, role, refresh_token FROM users WHERE id = ?',
       [id],
     );
+
     return rows[0];
   }
 
+  // GET ALL USERS
   async getAll() {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
       'SELECT id, username, role, created_at FROM users',
     );
+
     return rows;
   }
 
-  async updateUser(id: number, partial: { username?: string; password?: string; role?: string }) {
+  // UPDATE USER
+  async updateUser(
+    id: number,
+    partial: { username?: string; password?: string; role?: string },
+  ) {
     const fields: string[] = [];
     const values: any[] = [];
 
@@ -63,23 +81,30 @@ export class UsersService {
       values.push(partial.role);
     }
 
-    if (fields.length === 0) return await this.findById(id);
+    if (fields.length === 0) {
+      return await this.findById(id);
+    }
 
     values.push(id);
+
     const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+
     await this.pool().execute(sql, values);
 
     return this.findById(id);
   }
 
+  // DELETE USER
   async deleteUser(id: number) {
-    const [result] = await this.pool().execute<OkPacket>(
+    await this.pool().execute<OkPacket>(
       'DELETE FROM users WHERE id = ?',
       [id],
     );
+
     return true;
   }
 
+  // SET REFRESH TOKEN
   async setRefreshToken(id: number, refreshToken: string | null) {
     await this.pool().execute(
       'UPDATE users SET refresh_token = ? WHERE id = ?',
@@ -87,11 +112,13 @@ export class UsersService {
     );
   }
 
+  // FIND USER BY REFRESH TOKEN
   async findByRefreshToken(refreshToken: string) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
       'SELECT id, username, role FROM users WHERE refresh_token = ?',
       [refreshToken],
     );
+
     return rows[0];
   }
 }

@@ -1,26 +1,43 @@
-import {Controller, Get, Post, Put, Delete, Body, Param, UseGuards} from '@nestjs/common';
+
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  ForbiddenException,
+} from '@nestjs/common';
 import { BusService } from './bus.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('bus')
+@UseGuards(JwtAuthGuard)
 export class BusController {
   constructor(private busService: BusService) {}
 
-  // Get all buses (protected)
-  @UseGuards(JwtAuthGuard)
+  private checkAdmin(request: any) {
+    if (request.user?.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+  }
+
+  // GET ALL BUSES
   @Get()
   async getAll() {
     return this.busService.getAll();
   }
 
-  // Get single bus by id (protected)
-  @UseGuards(JwtAuthGuard)
+  // GET BUS BY ID
   @Get(':id')
   async getOne(@Param('id') id: string) {
     return this.busService.findById(+id);
   }
 
-  // Create bus (open - for demo)
+  // CREATE BUS - ADMIN ONLY
   @Post()
   async create(
     @Body()
@@ -29,29 +46,37 @@ export class BusController {
       bus_number: string;
       bus_type: string;
       bus_capacity: number;
-      role?: string;
     },
+    @Request() request: any,
   ) {
+    this.checkAdmin(request);
+
     return this.busService.createBus(
       body.bus_code,
       body.bus_number,
       body.bus_type,
       body.bus_capacity,
-      body.role,
     );
   }
 
-  // Update bus (protected)
-  @UseGuards(JwtAuthGuard)
+  // UPDATE BUS - ADMIN ONLY
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.busService.updateBus(+id, body);
   }
 
-  // Delete bus (protected)
-  @UseGuards(JwtAuthGuard)
+  // DELETE BUS - ADMIN ONLY
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(
+    @Param('id') id: string,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.busService.deleteBus(+id);
   }
 }
