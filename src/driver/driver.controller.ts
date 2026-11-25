@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -7,22 +8,29 @@ import {
   Body,
   Param,
   UseGuards,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { DriverService } from './driver.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('driver')
+@UseGuards(JwtAuthGuard)
 export class DriverController {
   constructor(private driverService: DriverService) {}
 
-  @UseGuards(JwtAuthGuard)
+  private checkAdmin(request: any) {
+    if (request.user?.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+  }
+
   @Get()
   async getAll() {
     return this.driverService.getAll();
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getOne(@Param('id') id: string) {
     return this.driverService.findById(+id);
@@ -30,14 +38,16 @@ export class DriverController {
 
   @Post()
   async create(
-    @Body()
-    body: {
+    @Body() body: {
       driver_code: string;
       driver_firstname: string;
       driver_lastname: string;
       driver_phone: string;
     },
+    @Request() request: any,
   ) {
+    this.checkAdmin(request);
+
     return this.driverService.createDriver(
       body.driver_code,
       body.driver_firstname,
@@ -46,15 +56,22 @@ export class DriverController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.driverService.updateDriver(+id, body);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(
+    @Param('id') id: string,
+    @Request() request: any,
+  ) {
+    this.checkAdmin(request);
     return this.driverService.deleteDriver(+id);
   }
 }

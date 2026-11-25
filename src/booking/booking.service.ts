@@ -95,7 +95,7 @@ export class BookingService {
       const [result] = await connection.execute<OkPacket>(
         `INSERT INTO booking
          (booking_code, passenger_id, sched_id, seat_id, booking_date, booking_status)
-         VALUES (?, ?, ?, ?, CURDATE(), 'confirmed')`,
+         VALUES (?, ?, ?, ?, CURDATE(), 'pending')`,
         [temporaryCode, passengerId, schedId, seatId],
       );
 
@@ -114,7 +114,7 @@ export class BookingService {
         passenger_id: passengerId,
         sched_id: schedId,
         seat_id: seatId,
-        booking_status: 'confirmed',
+        booking_status: 'pending',
         message: 'Booking successful.',
       };
     } catch (error) {
@@ -178,34 +178,27 @@ export class BookingService {
     return { message: 'Booking cancelled successfully.' };
   }
 
-  async updateBooking(id: number, partial: any) {
-    const allowedStatuses = ['confirmed', 'pending', 'cancelled'];
+  
+async updateBooking(id: number, partial: any) {
+  const allowedStatuses = ["confirmed", "pending", "cancelled"];
+  const status = String(partial.booking_status ?? "").toLowerCase();
 
-    if (partial.booking_status && !allowedStatuses.includes(String(partial.booking_status).toLowerCase())) {
-      throw new BadRequestException('Invalid booking status.');
-    }
-
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    if (partial.booking_status !== undefined) {
-      fields.push('booking_status = ?');
-      values.push(partial.booking_status);
-    }
-
-    if (!fields.length) {
-      return this.findById(id, 0, 'admin');
-    }
-
-    values.push(id);
-
-    await this.pool().execute(
-      `UPDATE booking SET ${fields.join(', ')} WHERE booking_id = ?`,
-      values,
-    );
-
-    return this.findById(id, 0, 'admin');
+  if (!partial.booking_status || !allowedStatuses.includes(status)) {
+    throw new BadRequestException("Invalid booking status.");
   }
+
+  const [result] = await this.pool().execute<OkPacket>(
+    "UPDATE booking SET booking_status = ? WHERE booking_id = ?",
+    [status, id],
+  );
+
+  if (result.affectedRows === 0) {
+    throw new NotFoundException("Booking not found.");
+  }
+
+  return this.findById(id, 0, "admin");
+}
+
 
   async deleteBooking(id: number) {
     await this.pool().execute('DELETE FROM booking WHERE booking_id = ?', [id]);

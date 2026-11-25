@@ -5,10 +5,7 @@ import { BookingController } from './booking.controller';
 import { DatabaseModule } from '../database/database.module';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-  ],
+  imports: [DatabaseModule, PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [BookingController],
   providers: [BookingService],
   exports: [BookingService],

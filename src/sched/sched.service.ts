@@ -1,3 +1,4 @@
+
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { RowDataPacket, OkPacket } from 'mysql2';
@@ -23,35 +24,34 @@ export class SchedService {
       `INSERT INTO sched
       (sched_code, bus_id, route_id, driver_id, departure_time, arrival_time, fare)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        sched_code,
-        bus_id,
-        route_id,
-        driver_id,
-        departure_time,
-        arrival_time,
-        fare,
-      ],
+      [sched_code, bus_id, route_id, driver_id, departure_time, arrival_time, fare],
     );
 
-    return {
-      sched_id: result.insertId,
-      sched_code,
-      bus_id,
-      route_id,
-      driver_id,
-      departure_time,
-      arrival_time,
-      fare,
-    };
+    return this.findById(result.insertId);
   }
 
   async findById(id: number) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
-      `SELECT sched_id, sched_code, bus_id, route_id,
-      driver_id, departure_time, arrival_time, fare
-      FROM sched
-      WHERE sched_id = ?`,
+      `SELECT
+        s.sched_id,
+        s.sched_code,
+        s.bus_id,
+        s.route_id,
+        s.driver_id,
+        s.departure_time,
+        s.arrival_time,
+        s.fare,
+        s.created_at,
+        b.bus_number,
+        b.bus_type,
+        r.route_origin,
+        r.route_destination,
+        CONCAT(d.driver_firstname, ' ', d.driver_lastname) AS driver_name
+      FROM sched s
+      LEFT JOIN bus b ON s.bus_id = b.bus_id
+      LEFT JOIN route r ON s.route_id = r.route_id
+      LEFT JOIN driver d ON s.driver_id = d.driver_id
+      WHERE s.sched_id = ?`,
       [id],
     );
 
@@ -60,9 +60,26 @@ export class SchedService {
 
   async getAll() {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
-      `SELECT sched_id, sched_code, bus_id, route_id,
-      driver_id, departure_time, arrival_time, fare, created_at
-      FROM sched`,
+      `SELECT
+        s.sched_id,
+        s.sched_code,
+        s.bus_id,
+        s.route_id,
+        s.driver_id,
+        s.departure_time,
+        s.arrival_time,
+        s.fare,
+        s.created_at,
+        b.bus_number,
+        b.bus_type,
+        r.route_origin,
+        r.route_destination,
+        CONCAT(d.driver_firstname, ' ', d.driver_lastname) AS driver_name
+      FROM sched s
+      LEFT JOIN bus b ON s.bus_id = b.bus_id
+      LEFT JOIN route r ON s.route_id = r.route_id
+      LEFT JOIN driver d ON s.driver_id = d.driver_id
+      ORDER BY s.departure_time ASC`,
     );
 
     return rows;
@@ -83,7 +100,7 @@ export class SchedService {
     const fields: string[] = [];
     const values: any[] = [];
 
-    if (partial.sched_code) {
+    if (partial.sched_code !== undefined) {
       fields.push('sched_code = ?');
       values.push(partial.sched_code);
     }
@@ -103,12 +120,12 @@ export class SchedService {
       values.push(partial.driver_id);
     }
 
-    if (partial.departure_time) {
+    if (partial.departure_time !== undefined) {
       fields.push('departure_time = ?');
       values.push(partial.departure_time);
     }
 
-    if (partial.arrival_time) {
+    if (partial.arrival_time !== undefined) {
       fields.push('arrival_time = ?');
       values.push(partial.arrival_time);
     }
@@ -124,23 +141,20 @@ export class SchedService {
 
     values.push(id);
 
-    const sql = `
-      UPDATE sched
-      SET ${fields.join(', ')}
-      WHERE sched_id = ?
-    `;
-
-    await this.pool().execute(sql, values);
+    await this.pool().execute(
+      `UPDATE sched SET ${fields.join(', ')} WHERE sched_id = ?`,
+      values,
+    );
 
     return this.findById(id);
   }
 
   async deleteSched(id: number) {
-    const [result] = await this.pool().execute<OkPacket>(
+    await this.pool().execute<OkPacket>(
       'DELETE FROM sched WHERE sched_id = ?',
       [id],
     );
 
-    return true;
+    return { message: 'Schedule deleted successfully' };
   }
 }
