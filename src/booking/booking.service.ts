@@ -125,6 +125,7 @@ export class BookingService {
     }
   }
 
+  // GET ALL BOOKINGS
   async getAll(userId: number, role: string) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
       `SELECT b.booking_id, b.booking_code, b.passenger_id,
@@ -141,6 +142,39 @@ export class BookingService {
        ${role === 'admin' ? '' : 'WHERE p.user_id = ?'}
        ORDER BY b.created_at DESC`,
       role === 'admin' ? [] : [userId],
+    );
+
+    return rows;
+  }
+
+  // GET PASSENGER TRAVEL HISTORY
+  async getMyTravelHistory(userId: number) {
+    const [rows] = await this.pool().execute<RowDataPacket[]>(
+      `SELECT
+        b.booking_id,
+        b.booking_code,
+        b.booking_date,
+        b.booking_status,
+        sc.sched_code,
+        sc.departure_time,
+        sc.arrival_time,
+        sc.fare,
+        r.route_origin,
+        r.route_destination,
+        bus.bus_number,
+        bus.bus_type,
+        s.seat_number
+       FROM booking b
+       INNER JOIN passenger p ON p.passenger_id = b.passenger_id
+       INNER JOIN sched sc ON sc.sched_id = b.sched_id
+       INNER JOIN seat s ON s.seat_id = b.seat_id
+       INNER JOIN route r ON r.route_id = sc.route_id
+       INNER JOIN bus ON bus.bus_id = sc.bus_id
+       WHERE p.user_id = ?
+       AND LOWER(b.booking_status) = 'confirmed'
+       AND sc.departure_time < NOW()
+       ORDER BY sc.departure_time DESC`,
+      [userId],
     );
 
     return rows;
@@ -178,30 +212,32 @@ export class BookingService {
     return { message: 'Booking cancelled successfully.' };
   }
 
-  
-async updateBooking(id: number, partial: any) {
-  const allowedStatuses = ["confirmed", "pending", "cancelled"];
-  const status = String(partial.booking_status ?? "").toLowerCase();
+  async updateBooking(id: number, partial: any) {
+    const allowedStatuses = ['confirmed', 'pending', 'cancelled'];
+    const status = String(partial.booking_status ?? '').toLowerCase();
 
-  if (!partial.booking_status || !allowedStatuses.includes(status)) {
-    throw new BadRequestException("Invalid booking status.");
+    if (!partial.booking_status || !allowedStatuses.includes(status)) {
+      throw new BadRequestException('Invalid booking status.');
+    }
+
+    const [result] = await this.pool().execute<OkPacket>(
+      'UPDATE booking SET booking_status = ? WHERE booking_id = ?',
+      [status, id],
+    );
+
+    if (result.affectedRows === 0) {
+      throw new NotFoundException('Booking not found.');
+    }
+
+    return this.findById(id, 0, 'admin');
   }
-
-  const [result] = await this.pool().execute<OkPacket>(
-    "UPDATE booking SET booking_status = ? WHERE booking_id = ?",
-    [status, id],
-  );
-
-  if (result.affectedRows === 0) {
-    throw new NotFoundException("Booking not found.");
-  }
-
-  return this.findById(id, 0, "admin");
-}
-
 
   async deleteBooking(id: number) {
-    await this.pool().execute('DELETE FROM booking WHERE booking_id = ?', [id]);
+    await this.pool().execute(
+      'DELETE FROM booking WHERE booking_id = ?',
+      [id],
+    );
+
     return { message: 'Booking deleted successfully.' };
   }
 }

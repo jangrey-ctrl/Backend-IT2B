@@ -1,3 +1,4 @@
+
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,6 +22,11 @@ export class BookingController {
   @Get('available-seats/:schedId')
   async getAvailableSeats(@Param('schedId') schedId: string) {
     return this.bookingService.getAvailableSeats(+schedId);
+  }
+
+  @Get('my-history')
+  async getMyTravelHistory(@Request() request: any) {
+    return this.bookingService.getMyTravelHistory(request.user.userId);
   }
 
   @Get(':id')
