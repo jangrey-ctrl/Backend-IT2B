@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -7,6 +8,7 @@ import {
   Body,
   Param,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 
 import { PassengerService } from './passenger.service';
@@ -15,6 +17,18 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('passenger')
 export class PassengerController {
   constructor(private passengerService: PassengerService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/profile')
+  async getMyProfile(@Req() req: any) {
+    return this.passengerService.getMyProfile(Number(req.user.userId));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('me/profile')
+  async updateMyProfile(@Req() req: any, @Body() body: any) {
+    return this.passengerService.updateMyProfile(Number(req.user.userId), body);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get()
