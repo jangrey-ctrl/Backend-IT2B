@@ -19,8 +19,23 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() body: { username: string; password: string }) {
-    return this.usersService.createUser(body.username, body.password);
+  async register(
+    @Body()
+    body: {
+      username: string;
+      password: string;
+      firstname: string;
+      lastname: string;
+      email: string;
+    },
+  ) {
+    return this.usersService.createUser(
+      body.username,
+      body.password,
+      body.firstname,
+      body.lastname,
+      body.email,
+    );
   }
 
   @Post('login')

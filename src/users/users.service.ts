@@ -12,20 +12,47 @@ export class UsersService {
     return this.db.getPool();
   }
 
-  // CREATE USER - Public registration always creates a passenger/user
-  async createUser(username: string, password: string) {
+  // CREATE USER AND PASSENGER
+  async createUser(
+    username: string,
+    password: string,
+    firstname: string,
+    lastname: string,
+    email: string,
+  ) {
     const hashed = await bcrypt.hash(password, 10);
+    const connection = await this.pool().getConnection();
 
-    const [result] = await this.pool().execute<OkPacket>(
-      "INSERT INTO users (username, password, role) VALUES (?, ?, 'user')",
-      [username, hashed],
-    );
+    try {
+      await connection.beginTransaction();
 
-    return {
-      id: result.insertId,
-      username,
-      role: 'user',
-    };
+      const [userResult] = await connection.execute<OkPacket>(
+        "INSERT INTO users (username, password, role) VALUES (?, ?, 'user')",
+        [username, hashed],
+      );
+
+      const userId = userResult.insertId;
+
+      await connection.execute<OkPacket>(
+        `INSERT INTO passenger
+        (user_id, passenger_firstname, passenger_lastname, passenger_email)
+        VALUES (?, ?, ?, ?)`,
+        [userId, firstname, lastname, email],
+      );
+
+      await connection.commit();
+
+      return {
+        id: userId,
+        username,
+        role: 'user',
+      };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   // FIND USER BY USERNAME
