@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { RowDataPacket, OkPacket } from 'mysql2';
 import { randomBytes } from 'crypto';
@@ -89,13 +90,20 @@ export class BookingService {
         throw new BadRequestException('This seat has already been booked.');
       }
 
-      const bookingCode = `BK-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+      const temporaryCode = `TEMP-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 
       const [result] = await connection.execute<OkPacket>(
         `INSERT INTO booking
          (booking_code, passenger_id, sched_id, seat_id, booking_date, booking_status)
          VALUES (?, ?, ?, ?, CURDATE(), 'confirmed')`,
-        [bookingCode, passengerId, schedId, seatId],
+        [temporaryCode, passengerId, schedId, seatId],
+      );
+
+      const bookingCode = `BK-${String(result.insertId).padStart(3, '0')}`;
+
+      await connection.execute(
+        'UPDATE booking SET booking_code = ? WHERE booking_id = ?',
+        [bookingCode, result.insertId],
       );
 
       await connection.commit();
