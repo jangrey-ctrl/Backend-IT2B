@@ -147,38 +147,55 @@ export class BookingService {
     return rows;
   }
 
-  // GET PASSENGER TRAVEL HISTORY
-  async getMyTravelHistory(userId: number) {
-    const [rows] = await this.pool().execute<RowDataPacket[]>(
-      `SELECT
-        b.booking_id,
-        b.booking_code,
-        b.booking_date,
-        b.booking_status,
-        sc.sched_code,
-        sc.departure_time,
-        sc.arrival_time,
-        sc.fare,
-        r.route_origin,
-        r.route_destination,
-        bus.bus_number,
-        bus.bus_type,
-        s.seat_number
-       FROM booking b
-       INNER JOIN passenger p ON p.passenger_id = b.passenger_id
-       INNER JOIN sched sc ON sc.sched_id = b.sched_id
-       INNER JOIN seat s ON s.seat_id = b.seat_id
-       INNER JOIN route r ON r.route_id = sc.route_id
-       INNER JOIN bus ON bus.bus_id = sc.bus_id
-       WHERE p.user_id = ?
-       AND LOWER(b.booking_status) = 'confirmed'
-       AND sc.departure_time < NOW()
-       ORDER BY sc.departure_time DESC`,
-      [userId],
-    );
+  
+// GET PASSENGER TRAVEL HISTORY
+async getMyTravelHistory(userId: number) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
 
-    return rows;
-  }
+  const getPart = (type: string) => parts.find((part) => part.type === type)?.value;
+
+  const manilaNow = `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+
+  const [rows] = await this.pool().execute<RowDataPacket[]>(
+    `SELECT
+      b.booking_id,
+      b.booking_code,
+      b.booking_date,
+      b.booking_status,
+      sc.sched_code,
+      sc.departure_time,
+      sc.arrival_time,
+      sc.fare,
+      r.route_origin,
+      r.route_destination,
+      bus.bus_number,
+      bus.bus_type,
+      s.seat_number
+     FROM booking b
+     INNER JOIN passenger p ON p.passenger_id = b.passenger_id
+     INNER JOIN sched sc ON sc.sched_id = b.sched_id
+     INNER JOIN seat s ON s.seat_id = b.seat_id
+     INNER JOIN route r ON r.route_id = sc.route_id
+     INNER JOIN bus ON bus.bus_id = sc.bus_id
+     WHERE p.user_id = ?
+     AND LOWER(b.booking_status) = 'confirmed'
+     AND sc.arrival_time < ?
+     ORDER BY sc.arrival_time DESC`,
+    [userId, manilaNow],
+  );
+
+  return rows;
+}
+
 
   async findById(id: number, userId: number, role: string) {
     const [rows] = await this.pool().execute<RowDataPacket[]>(
