@@ -19,6 +19,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      dateStrings: true,
+      timezone: '+00:00',
     });
 
     const conn = await this.pool.getConnection();
