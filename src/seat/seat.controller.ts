@@ -1,17 +1,8 @@
 
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-  ForbiddenException,
+  Controller, Get, Post, Put, Delete, Body, Param,
+  UseGuards, Request, ForbiddenException, ParseIntPipe,
 } from '@nestjs/common';
-
 import { SeatService } from './seat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -31,28 +22,20 @@ export class SeatController {
     return this.seatService.getAll();
   }
 
+  @Get('schedule/:schedId')
+  async getBySchedule(@Param('schedId', ParseIntPipe) schedId: number) {
+    return this.seatService.getBySchedule(schedId);
+  }
+
   @Get(':id')
   async getOne(@Param('id') id: string) {
     return this.seatService.findById(+id);
   }
 
   @Post()
-  async create(@Body() body: {
-    seat_code: string;
-    bus_id: number;
-    seat_number: string;
-    seat_status: string;
-    role?: string;
-  }, @Request() request: any) {
+  async create(@Body() body: { seat_code: string; bus_id: number; seat_number: string; seat_status: string; role?: string }, @Request() request: any) {
     this.checkAdmin(request);
-
-    return this.seatService.createSeat(
-      body.seat_code,
-      body.bus_id,
-      body.seat_number,
-      body.seat_status,
-      body.role,
-    );
+    return this.seatService.createSeat(body.seat_code, body.bus_id, body.seat_number, body.seat_status, body.role);
   }
 
   @Put(':id')
